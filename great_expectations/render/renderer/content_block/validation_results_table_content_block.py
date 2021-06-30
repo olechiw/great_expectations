@@ -1,4 +1,5 @@
 import logging
+import operator
 import traceback
 from copy import deepcopy
 
@@ -39,11 +40,55 @@ class ValidationResultsTableContentBlockRenderer(ExpectationStringRenderer):
         "classes": ["ml-2", "mr-2", "mt-0", "mb-0", "table-responsive"],
     }
 
+    _custom_property_columns_key = "properties_to_render"
+
     @classmethod
-    def _process_content_block(cls, content_block, has_failed_evr):
+    def _get_custom_columns(cls, validation_results):
+        custom_columns = []
+        for result in validation_results:
+            if (
+                result.expectation_config.meta is not None
+                and cls._custom_property_columns_key in result.expectation_config.meta
+            ):
+                for key in result.expectation_config.meta[
+                    cls._custom_property_columns_key
+                ]:
+                    if key not in custom_columns:
+                        custom_columns.append(key)
+        return sorted(custom_columns)
+
+    @classmethod
+    def render(cls, validation_results, **kwargs):
+        custom_columns = cls._get_custom_columns(validation_results)
+        for result in validation_results:
+            if result.expectation_config.meta is None:
+                result.expectation_config.meta = {cls._custom_property_columns_key: {}}
+            elif cls._custom_property_columns_key not in result.expectation_config.meta:
+                result.expectation_config.meta[cls._custom_property_columns_key] = {}
+            for column in custom_columns:
+                if (
+                    column
+                    not in result.expectation_config.meta[
+                        cls._custom_property_columns_key
+                    ]
+                ):
+                    result.expectation_config.meta[cls._custom_property_columns_key][
+                        column
+                    ] = None
+
+        return super().render(validation_results, **kwargs)
+
+    @classmethod
+    def _process_content_block(cls, content_block, has_failed_evr, render_object=None):
         super()._process_content_block(content_block, has_failed_evr)
         content_block.header_row = ["Status", "Expectation", "Observed Value"]
         content_block.header_row_options = {"Status": {"sortable": True}}
+
+        if render_object is not None:
+            custom_columns = cls._get_custom_columns(render_object)
+            content_block.header_row += custom_columns
+            for column in custom_columns:
+                content_block.header_row_options[column] = {"sortable": True}
 
         if has_failed_evr is False:
             styling = deepcopy(content_block.styling) if content_block.styling else {}
@@ -163,8 +208,29 @@ diagnose and repair the underlying issue.  Detailed information follows:
             if unexpected_table:
                 expectation_string_cell.append(unexpected_table)
             if len(expectation_string_cell) > 1:
-                return [status_cell + [expectation_string_cell] + observed_value]
+                table = [status_cell + [expectation_string_cell] + observed_value]
             else:
-                return [status_cell + expectation_string_cell + observed_value]
+                table = [status_cell + expectation_string_cell + observed_value]
+
+            custom_property_values = []
+            if (
+                expectation.meta is not None
+                and cls._custom_property_columns_key in expectation.meta
+            ):
+                for key in sorted(expectation.meta[cls._custom_property_columns_key]):
+                    value = expectation.meta[cls._custom_property_columns_key][key]
+                    if value is not None:
+                        try:
+                            obj = expectation.meta
+                            for v in value.split("."):
+                                obj = obj[v]
+                            custom_property_values.append([obj])
+                        except KeyError:
+                            custom_property_values.append(["N/A"])
+                    else:
+                        custom_property_values.append(["N/A"])
+            table[0] += custom_property_values
+
+            return table
 
         return row_generator_fn
