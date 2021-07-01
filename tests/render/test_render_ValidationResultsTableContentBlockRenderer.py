@@ -187,6 +187,133 @@ def test_ValidationResultsTableContentBlockRenderer_get_content_block_fn(evr_suc
     ]
     assert content_block_fn_output == content_block_fn_expected_output
 
+    evr_success.expectation_config.meta = {}
+    content_block_fn_output = content_block_fn(result=evr_success)
+    assert content_block_fn_output == content_block_fn_expected_output
+
+    evr_success.expectation_config.meta = {"properties_to_render": {}}
+    content_block_fn_output = content_block_fn(result=evr_success)
+    assert content_block_fn_output == content_block_fn_expected_output
+
+    evr_success.expectation_config.meta = {
+        "properties_to_render": {"property_that_doesnt_exist": "property"}
+    }
+    content_block_fn_expected_output = [
+        [
+            RenderedStringTemplateContent(
+                **{
+                    "content_block_type": "string_template",
+                    "string_template": {
+                        "template": "$icon",
+                        "params": {"icon": "", "markdown_status_icon": "✅"},
+                        "styling": {
+                            "params": {
+                                "icon": {
+                                    "classes": [
+                                        "fas",
+                                        "fa-check-circle",
+                                        "text-success",
+                                    ],
+                                    "tag": "i",
+                                }
+                            }
+                        },
+                    },
+                    "styling": {
+                        "parent": {
+                            "classes": ["hide-succeeded-validation-target-child"]
+                        }
+                    },
+                }
+            ),
+            RenderedStringTemplateContent(
+                **{
+                    "content_block_type": "string_template",
+                    "string_template": {
+                        "template": "Must have greater than or equal to $min_value rows.",
+                        "params": {
+                            "min_value": 0,
+                            "max_value": None,
+                            "result_format": "SUMMARY",
+                            "row_condition": None,
+                            "condition_parser": None,
+                            "strict_max": None,
+                            "strict_min": None,
+                        },
+                        "styling": None,
+                    },
+                }
+            ),
+            "1,313",
+            ["N/A"],
+        ]
+    ]
+    content_block_fn_output = content_block_fn(result=evr_success)
+    assert content_block_fn_output == content_block_fn_expected_output
+
+    evr_success.expectation_config.meta = {
+        "property": 5,
+        "properties_to_render": {
+            "property_that_exists": "property",
+            "other existing prop": "nested.property",
+        },
+        "nested": {"property": "this is nested"},
+    }
+
+    content_block_fn_expected_output = [
+        [
+            RenderedStringTemplateContent(
+                **{
+                    "content_block_type": "string_template",
+                    "string_template": {
+                        "template": "$icon",
+                        "params": {"icon": "", "markdown_status_icon": "✅"},
+                        "styling": {
+                            "params": {
+                                "icon": {
+                                    "classes": [
+                                        "fas",
+                                        "fa-check-circle",
+                                        "text-success",
+                                    ],
+                                    "tag": "i",
+                                }
+                            }
+                        },
+                    },
+                    "styling": {
+                        "parent": {
+                            "classes": ["hide-succeeded-validation-target-child"]
+                        }
+                    },
+                }
+            ),
+            RenderedStringTemplateContent(
+                **{
+                    "content_block_type": "string_template",
+                    "string_template": {
+                        "template": "Must have greater than or equal to $min_value rows.",
+                        "params": {
+                            "min_value": 0,
+                            "max_value": None,
+                            "result_format": "SUMMARY",
+                            "row_condition": None,
+                            "condition_parser": None,
+                            "strict_max": None,
+                            "strict_min": None,
+                        },
+                        "styling": None,
+                    },
+                }
+            ),
+            "1,313",
+            ["this is nested"],
+            [5],
+        ]
+    ]
+    content_block_fn_output = content_block_fn(result=evr_success)
+    assert content_block_fn_output == content_block_fn_expected_output
+
 
 def test_ValidationResultsTableContentBlockRenderer_get_observed_value(evr_success):
     evr_no_result_key = ExpectationValidationResult(
