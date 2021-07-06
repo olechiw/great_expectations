@@ -130,6 +130,28 @@ def test_ValidationResultsTableContentBlockRenderer_render(
     assert json.dumps(validation_results_table.to_json_dict()).count("$icon") == 6
 
 
+def test_ValidationResultsTableContentBlockRenderer_get_custom_columns(evr_success):
+    evr_success.expectation_config.meta = {}
+    assert (
+        ValidationResultsTableContentBlockRenderer._get_custom_columns([evr_success])
+        == []
+    )
+
+    evr_success.expectation_config.meta["properties_to_render"] = {}
+    assert (
+        ValidationResultsTableContentBlockRenderer._get_custom_columns([evr_success])
+        == []
+    )
+
+    evr_success.expectation_config.meta["properties_to_render"] = {
+        "doesntmatterone": "doesntmatter",
+        "doesntmattertwo": "doesntmatter",
+    }
+    assert ValidationResultsTableContentBlockRenderer._get_custom_columns(
+        [evr_success]
+    ) == ["doesntmatterone", "doesntmattertwo"]
+
+
 def test_ValidationResultsTableContentBlockRenderer_get_content_block_fn(evr_success):
     content_block_fn = ValidationResultsTableContentBlockRenderer._get_content_block_fn(
         "expect_table_row_count_to_be_between"
